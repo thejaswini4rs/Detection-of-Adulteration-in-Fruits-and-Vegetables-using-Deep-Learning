@@ -1,0 +1,79 @@
+import mysql.connector
+from mysql.connector import Error
+
+# Database configuration
+DB_CONFIG = {
+    'host': 'localhost',
+    'user': 'root',
+    'password': ''
+}
+
+def create_database_and_tables():
+    """Create database and tables"""
+    connection = None
+    try:
+        # Connect to MySQL server
+        connection = mysql.connector.connect(**DB_CONFIG)
+        cursor = connection.cursor()
+        
+        # Create database
+        cursor.execute("CREATE DATABASE IF NOT EXISTS fruitsvegetablesadult_2025")
+        print("Database 'fruitsvegetablesadult_2025' created successfully!")
+        
+        # Use the database
+        cursor.execute("USE fruitsvegetablesadult_2025")
+        
+        # Create users table
+        create_users_table = """
+        CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(50) UNIQUE NOT NULL,
+            email VARCHAR(100) UNIQUE NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+        cursor.execute(create_users_table)
+        print("Users table created successfully!")
+        
+        # Create uploads table (optional - for tracking uploads)
+        create_uploads_table = """
+        CREATE TABLE IF NOT EXISTS uploads (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            filename VARCHAR(255) NOT NULL,
+            original_path VARCHAR(500) NOT NULL,
+            binary_path VARCHAR(500),
+            threshold_path VARCHAR(500),
+            grayscale_path VARCHAR(500),
+            segmentation_path VARCHAR(500),
+            fruit_type VARCHAR(100),
+            quality_assessment VARCHAR(50),
+            confidence_percentage FLOAT,
+            adulteration_signs TEXT,
+            safety_assessment TEXT,
+            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+        cursor.execute(create_uploads_table)
+        print("Uploads table created successfully!")
+        
+        connection.commit()
+        print("Database setup completed successfully!")
+        
+    except Error as e:
+        print(f"Error: {e}")
+        print("\nMake sure MySQL server is running and the credentials are correct.")
+        print("Default MySQL credentials:")
+        print("- Host: localhost")
+        print("- User: root")
+        print("- Password: (empty)")
+        
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+            print("MySQL connection closed.")
+
+if __name__ == "__main__":
+    create_database_and_tables()
