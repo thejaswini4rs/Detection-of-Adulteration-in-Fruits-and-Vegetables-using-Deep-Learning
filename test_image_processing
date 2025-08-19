@@ -1,0 +1,91 @@
+import cv2
+import numpy as np
+import os
+from PIL import Image
+
+def create_test_image():
+    """Create a simple test image for testing image processing"""
+    # Create a simple test image with some shapes
+    img = np.zeros((400, 400, 3), dtype=np.uint8)
+    
+    # Add some colored shapes to simulate fruit/vegetable
+    cv2.circle(img, (150, 150), 80, (0, 255, 0), -1)  # Green circle
+    cv2.rectangle(img, (250, 100), (350, 200), (0, 0, 255), -1)  # Red rectangle
+    cv2.ellipse(img, (200, 300), (60, 40), 0, 0, 360, (255, 0, 0), -1)  # Blue ellipse
+    
+    # Add some noise
+    noise = np.random.randint(0, 50, (400, 400, 3), dtype=np.uint8)
+    img = cv2.add(img, noise)
+    
+    # Save test image
+    test_image_path = 'static/test_fruit.jpg'
+    cv2.imwrite(test_image_path, img)
+    print(f"Test image created: {test_image_path}")
+    
+    return test_image_path
+
+def test_image_processing(image_path):
+    """Test the image processing functions"""
+    print(f"Testing image processing on: {image_path}")
+    
+    # Read the original image
+    img = cv2.imread(image_path)
+    if img is None:
+        print("Error: Could not load image")
+        return
+    
+    print("Original image loaded successfully")
+    
+    # Convert to grayscale
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    print("Grayscale conversion: OK")
+    
+    # Binary image (using Otsu's thresholding)
+    _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    print("Binary processing: OK")
+    
+    # Threshold image (using adaptive threshold)
+    threshold = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2)
+    print("Threshold processing: OK")
+    
+    # Segmentation using watershed
+    kernel = np.ones((3,3), np.uint8)
+    opening = cv2.morphologyEx(threshold, cv2.MORPH_OPEN, kernel, iterations=2)
+    sure_bg = cv2.dilate(opening, kernel, iterations=3)
+    dist_transform = cv2.distanceTransform(opening, cv2.DIST_L2, 5)
+    _, sure_fg = cv2.threshold(dist_transform, 0.7*dist_transform.max(), 255, 0)
+    sure_fg = np.uint8(sure_fg)
+    unknown = cv2.subtract(sure_bg, sure_fg)
+    _, markers = cv2.connectedComponents(sure_fg)
+    markers = markers + 1
+    markers[unknown == 255] = 0
+    markers = cv2.watershed(img, markers)
+    img[markers == -1] = [255, 0, 0]
+    print("Segmentation processing: OK")
+    
+    # Save processed images
+    base_name = os.path.splitext(os.path.basename(image_path))[0]
+    folder = os.path.dirname(image_path)
+    
+    cv2.imwrite(os.path.join(folder, f"{base_name}_binary.jpg"), binary)
+    cv2.imwrite(os.path.join(folder, f"{base_name}_threshold.jpg"), threshold)
+    cv2.imwrite(os.path.join(folder, f"{base_name}_grayscale.jpg"), gray)
+    cv2.imwrite(os.path.join(folder, f"{base_name}_segmentation.jpg"), img)
+    
+    print("All processed images saved successfully!")
+    print("Image processing test completed successfully!")
+
+if __name__ == "__main__":
+    # Create static directory if it doesn't exist
+    if not os.path.exists('static'):
+        os.makedirs('static')
+    
+    # Create and test with a sample image
+    test_image = create_test_image()
+    test_image_processing(test_image)
+    
+    print("\nTest completed! You can now:")
+    print("1. Run the Flask app: python app.py")
+    print("2. Open http://localhost:5000 in your browser")
+    print("3. Register a new account")
+    print("4. Login and upload the test image or your own images")
